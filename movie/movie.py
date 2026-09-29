@@ -22,33 +22,46 @@ def error_response(message, code):
 
 movies = load_movies()
 
+def is_movie_valid(obj):
+    return all([
+        obj.get("title"),
+        obj.get("rating"),
+        obj.get("director"),
+        obj.get("id"),
+    ])
+
+def get_movie_by_id(id_):
+    for movie in movies:
+        if movie["id"] == id_:
+            return movie
+    return None
+
+def get_movie_by_title(title):
+    for movie in movies:
+        if movie["title"] == title:
+            return movie
+    return None
+
 @app.route("/movies/list/all", methods=['GET'])
 def get_json():
     return make_response(jsonify(movies), 200)
 
 @app.route("/movies/<movieid>", methods=['GET'])
-def get_movie_by_id(movieid):
-    for movie in movies:
-        # movie is an object from DB, it's guaranteed to have an id
-        if movie["id"] == movieid:
-            res = make_response(jsonify(movie), 200)
-            return res
+def movie_by_id(movieid):
+    movie = get_movie_by_id(movieid)
+    if movie is not None:
+        return make_response(jsonify(movie), 200)
     return error_response("movie ID not found", 404)
 
 @app.route("/movies/<movieid>", methods=['POST'])
 def add_movie(movieid):
     req = request.get_json()
-    try:
-        req["title"]
-        req["rating"]
-        req["director"]
-        req["id"]
-    except KeyError:
+    if not is_movie_valid(req):
         return error_response("malformed movie body", 400)
 
-    for movie in movies:
-        if movie["id"] == movieid:
-            return error_response("movie already exists", 409)
+    movie = get_movie_by_id(movieid)
+    if movie is not None:
+        return error_response("movie already exists", 409)
 
     movies.append(req)
     write_movies(movies)
@@ -57,33 +70,30 @@ def add_movie(movieid):
 
 @app.route("/movies/<movieid>", methods=['DELETE'])
 def del_movie(movieid):
-    for movie in movies:
-        if movie["id"] == movieid:
-            movies.remove(movie)
-            write_movies(movies)
-            return make_response(jsonify(movie), 200)
-
+    movie = get_movie_by_id(movieid)
+    if movie is not None:
+        movies.remove(movie)
+        write_movies(movies)
+        return make_response(jsonify(movie), 200)
     return error_response("movie ID not found", 404)
 
 # /info?title=...
 @app.route("/movies/info", methods=['GET'])
-def get_movie_by_title():
-    for movie in movies:
-        if movie["title"] == request.args.get("title"):
-            return make_response(jsonify(movie), 200)
-
+def movie_by_title():
+    movie = get_movie_by_title(request.args.get("title"))
+    if movie is not None:
+        return make_response(jsonify(movie), 200)
     return error_response("movie title not found", 404)
 
 # new rating is in request body
 @app.route("/movies/rating/<movieid>", methods=['PUT'])
 def update_movie_rating(movieid):
     req = request.get_json()
-    for movie in movies:
-        if movie["id"] == movieid and (rating := req["rating"]):
-            movie["rating"] = rating
-            write_movies(movies)
-            return make_response(jsonify(movie), 200)
-
+    movie = get_movie_by_id(movieid)
+    if movie is not None:
+        movie["rating"] = req["rating"]
+        write_movies(movies)
+        return make_response(jsonify(movie), 200)
     return error_response("movie ID not found", 404)
 
 if __name__ == "__main__":
