@@ -22,7 +22,7 @@ schedule = load_schedule()
 def error_response(message, code):
     return make_response(jsonify({"error": message}), code)
 
-def get_movies_by_date(date):
+def get_entry_by_date(date):
    for entry in schedule:
       if entry["date"] == date:
          return entry
@@ -50,7 +50,7 @@ def get_all_schedules():
 
 @app.route("/schedule/<date>", methods=["GET"])
 def get_date(date):
-   if len(movies := get_movies_by_date(date)) != 0:
+   if len(movies := get_entry_by_date(date)) != 0:
       return make_response(jsonify(movies), 200)
    return error_response("no movies for the given date", 404)
 
@@ -65,7 +65,7 @@ def add_movies_to_schedule(date):
       return error_response("no movies were specified", 400)
    
    movies_to_add = get_valid_movies(movies_from_req)
-   if len(existing_entry := get_movies_by_date(date)) != 0:
+   if len(existing_entry := get_entry_by_date(date)) != 0:
       existing_entry["movies"] = list(set(existing_entry["movies"]) | set(movies_to_add))
       write_schedule(schedule)
       return make_response(jsonify(existing_entry), 200)
@@ -77,6 +77,24 @@ def add_movies_to_schedule(date):
       schedule.append(new_entry)
       write_schedule(schedule)
    return make_response(jsonify(new_entry), 200)
+
+@app.route("/schedule/<date>", methods=["DELETE"])
+def remove_movies_from_date(date):
+   movies = get_entry_by_date(date)
+   if len(movies) == 0:
+      return error_response("date not found", 404)
+   
+   body = request.get_json()
+   if not is_body_valid(body):
+      return error_response("malformed request body", 400)
+   
+   entry = get_entry_by_date(body.get("date"))
+   entry["movies"] = [movie for movie in entry["movies"] if movie not in body.get("movies")]
+   if len(entry["movies"]) == 0:
+      global schedule
+      schedule = [entry for entry in schedule if entry["date"] != date]
+   write_schedule(schedule)
+   return entry
 
 if __name__ == "__main__":
     app.run(host='127.0.0.1', port=PORT, debug=True)
