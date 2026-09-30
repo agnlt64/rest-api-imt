@@ -76,6 +76,15 @@ def delete_user(user_id):
 	res = make_response(jsonify({"error":"user ID not found"}),500)
 	return res
 
+@app.route("/users/verify-user/<user_id>", methods=['GET'])
+def verify_user(user_id):
+	for user in users:
+		if str(user["id"]) == str(user_id):
+			res = make_response(jsonify(user),200)
+			return res
+
+	res = make_response(jsonify({"error":"user ID not found"}),500)
+	return res
 
 
 if __name__ == "__main__":
