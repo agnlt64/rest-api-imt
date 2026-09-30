@@ -1,21 +1,30 @@
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response
 import requests
 import json
-from werkzeug.exceptions import NotFound
 
 app = Flask(__name__)
 
 PORT = 3201
-HOST = '0.0.0.0'
 
-with open('{}/databases/bookings.json'.format("."), "r") as jsf:
-   bookings = json.load(jsf)["bookings"]
+def load_bookings():
+    with open("./databases/bookings.json", "r") as jsf:
+        bookings = json.load(jsf)["bookings"]
+    return bookings
 
-@app.route("/", methods=['GET'])
-def home():
-   return "<h1 style='color:blue'>Welcome to the Booking service!</h1>"
+def write_bookings(bookings):
+    with open("./databases/bookings.json", "w") as f:
+        full = {}
+        full["movies"] = bookings
+        json.dump(full, f)
 
+def error_response(message, code):
+    return make_response(jsonify({"error": message}), code)
+
+bookings = load_bookings()
+
+@app.route("/bookings/list/all", methods=["GET"])
+def get_all_bookings():
+    return make_response(jsonify(bookings))
 
 if __name__ == "__main__":
-   print("Server running in port %s"%(PORT))
-   app.run(host=HOST, port=PORT)
+    app.run(host="127.0.0.1", port=PORT, debug=True)
