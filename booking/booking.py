@@ -19,35 +19,39 @@ def write_bookings_to_file():
 def home():
    return "<h1 style='color:blue'>Welcome to the Booking service!</h1>"
 
-@app.route("/bookings/create-booking/<userid>", methods=['POST'])
-def create_booking(userid):
+def get_booking_data():
 	req = request.get_json(silent=True)
 	if not isinstance(req, dict):
-		return make_response(jsonify({"error": "malformed request body"}), 400)
+		return None, ("malformed request body", 400)
 
 	date = req.get("date")
 	movies = req.get("movies")
 	if not isinstance(date, str) or not date or not isinstance(movies, list) or not movies:
-		return make_response(jsonify({"error": "date and movies are required"}), 400)
+		return None, ("date and movies are required", 400)
 
+	return (date, movies), None
+
+def validate_schedule(date, movies):
 	try:
 		schedule_response = requests.get(
 			"http://127.0.0.1:3202/schedule/{}".format(date),
 			timeout=5
 		)
 	except requests.RequestException:
-		return make_response(jsonify({"error": "schedule service unavailable"}), 503)
+		return "schedule service unavailable", 503
 
 	if schedule_response.status_code == 404:
-		return make_response(jsonify({"error": "session not found"}), 404)
+		return "session not found", 404
 	if schedule_response.status_code != 200:
-		return make_response(jsonify({"error": "could not check session"}), 502)
+		return "could not check session", 502
 
-	scheduled_session = schedule_response.json()
-	scheduled_movies = scheduled_session.get("movies", [])
+	scheduled_movies = schedule_response.json().get("movies", [])
 	if any(movie_id not in scheduled_movies for movie_id in movies):
-		return make_response(jsonify({"error": "movie is not scheduled for this session"}), 400)
+		return "movie is not scheduled for this session", 400
 
+	return None
+
+def save_booking(userid, date, movies):
 	booking = next((item for item in bookings if item.get("userid") == userid), None)
 	if booking is None:
 		booking = {"userid": userid, "dates": []}
@@ -60,8 +64,20 @@ def create_booking(userid):
 		date_booking["movies"] = list(dict.fromkeys(date_booking["movies"] + movies))
 
 	write_bookings_to_file()
-	res = make_response(jsonify({"message":"booking added"}),200)
-	return res
+
+@app.route("/bookings/create-booking/<userid>", methods=['POST'])
+def create_booking(userid):
+	booking_data, error = get_booking_data()
+	if error is not None:
+		return make_response(jsonify({"error": error[0]}), error[1])
+
+	date, movies = booking_data
+	error = validate_schedule(date, movies)
+	if error is not None:
+		return make_response(jsonify({"error": error[0]}), error[1])
+
+	save_booking(userid, date, movies)
+	return make_response(jsonify({"message": "booking added"}), 200)
 
 @app.route("/bookings/read-all-bookings", methods=['GET'])
 def read_all_bookings():

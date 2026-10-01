@@ -22,6 +22,16 @@ schedule = load_schedule()
 def error_response(message, code):
     return make_response(jsonify({"error": message}), code)
 
+def is_admin(user_id):
+   try:
+      response = requests.get(
+         "http://127.0.0.1:3203/users/is-admin/{}".format(user_id),
+         timeout=5
+      )
+   except requests.RequestException:
+      return None
+   return response.status_code == 200
+
 def get_entry_by_date(date):
    for entry in schedule:
       if entry["date"] == date:
@@ -54,8 +64,14 @@ def get_date(date):
       return make_response(jsonify(movies), 200)
    return error_response("no movies for the given date", 404)
 
-@app.route("/schedule/<date>", methods=["POST"])
-def add_movies_to_schedule(date):
+@app.route("/schedule/<date>/<user_id>", methods=["POST"])
+def add_movies_to_schedule(date, user_id):
+   admin = is_admin(user_id)
+   if admin is None:
+      return error_response("user service unavailable", 503)
+   if not admin:
+      return error_response("user is not admin", 403)
+
    body = request.get_json()
    if not is_body_valid(body):
       return error_response("malformed request body", 400)
@@ -78,8 +94,16 @@ def add_movies_to_schedule(date):
       write_schedule(schedule)
    return make_response(jsonify(new_entry), 200)
 
-@app.route("/schedule/<date>", methods=["DELETE"])
-def remove_movies_from_date(date):
+@app.route("/schedule/<date>/<user_id>", methods=["DELETE"])
+def remove_movies_from_date(date, user_id):
+   global schedule
+
+   admin = is_admin(user_id)
+   if admin is None:
+      return error_response("user service unavailable", 503)
+   if not admin:
+      return error_response("user is not admin", 403)
+
    movies = get_entry_by_date(date)
    if len(movies) == 0:
       return error_response("date not found", 404)
@@ -91,7 +115,6 @@ def remove_movies_from_date(date):
    entry = get_entry_by_date(body.get("date"))
    entry["movies"] = [movie for movie in entry["movies"] if movie not in body.get("movies")]
    if len(entry["movies"]) == 0:
-      global schedule
       schedule = [entry for entry in schedule if entry["date"] != date]
    write_schedule(schedule)
    return entry
