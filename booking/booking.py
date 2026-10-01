@@ -49,6 +49,15 @@ def delete_booking(booking_id):
 	res = make_response(jsonify({"error":"booking ID not found"}),500)
 	return res
 
+@app.route("/bookings/get-detailed-booking/<booking_id>", methods=['GET'])
+def get_detailed_booking(booking_id):
+	for booking in bookings:
+		if str(booking["id"]) == str(booking_id):
+			res = make_response(jsonify(booking),200)
+			return res
+
+	res = make_response(jsonify({"error":"booking ID not found"}),500)
+	return res
 
 
 if __name__ == "__main__":
