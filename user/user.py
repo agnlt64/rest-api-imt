@@ -23,6 +23,12 @@ def write(users):
 		full['users']=users
 		json.dump(full, f)
 
+def verify_user_role(user_id, role):
+	for user in users:
+		if str(user["id"]) == str(user_id) and str(user["role"]) == role:
+			return True
+	return False
+
 @app.route("/", methods=['GET'])
 def home():
 	return "<h1 style='color:blue'>Welcome to the User service!</h1>"
@@ -86,7 +92,16 @@ def verify_user(user_id):
 	res = make_response(jsonify({"error":"user ID not found"}),500)
 	return res
 
+@app.route("/users/is-admin/<user_id>", methods=['GET'])
+def is_admin(user_id):
+	if verify_user_role(user_id, "admin"):
+		res = make_response(jsonify({"message":"user is admin"}),200)
+		return res
+
+	res = make_response(jsonify({"error":"user is not admin"}),500)
+	return res
+
 
 if __name__ == "__main__":
-   print("Server running in port %s"%(PORT))
-   app.run(host=HOST, port=PORT)
+	print("Server running in port %s"%(PORT))
+	app.run(host=HOST, port=PORT)
