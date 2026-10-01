@@ -57,11 +57,14 @@ paths:
               example:
                 error: no movies for the given date
 
+  /schedule/{date}/{user_id}:
+    parameters:
+      - $ref: "#/components/parameters/Date"
+      - $ref: "#/components/parameters/UserId"
     post:
       tags: [schedule]
       summary: Add movies to a schedule
-      parameters:
-        - $ref: "#/components/parameters/Date"
+      description: Only a user with the admin role can add movies. The user role is checked through the User service.
       requestBody:
         required: true
         description: Movie identifiers to add to the date. Each movie is checked by the Movie service.
@@ -86,12 +89,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "403":
+          description: The user is not an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: user is not admin
+        "503":
+          description: User service is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
     delete:
       tags: [schedule]
       summary: Remove movies from a date
-      parameters:
-        - $ref: "#/components/parameters/Date"
+      description: Only a user with the admin role can remove movies. The user role is checked through the User service.
       requestBody:
         required: true
         description: Date and movie identifiers to remove.
@@ -116,8 +132,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "403":
+          description: The user is not an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: user is not admin
         "404":
           description: Date not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: User service is unavailable
           content:
             application/json:
               schema:
@@ -134,6 +164,14 @@ components:
         type: string
         pattern: "^[0-9]{8}$"
         example: "20151201"
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      description: User requesting the schedule modification.
+      schema:
+        type: string
+        example: chris_rivers
   schemas:
     ScheduleEntry:
       type: object
