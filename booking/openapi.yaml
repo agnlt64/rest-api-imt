@@ -1,0 +1,228 @@
+openapi: 3.0.3
+info:
+  title: Booking Service API
+  description: API for creating and reading movie bookings.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3201
+    description: Local development server
+
+tags:
+  - name: bookings
+    description: Movie booking operations
+
+paths:
+  /:
+    get:
+      tags: [bookings]
+      summary: Service home page
+      responses:
+        "200":
+          description: HTML welcome message
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<h1 style='color:blue'>Welcome to the Booking service!</h1>"
+
+  /bookings/create-booking/{userid}:
+    post:
+      tags: [bookings]
+      summary: Create or update a user's booking
+      description: Adds the selected movies to the user's booking for a date. The date and movies must exist in the Schedule service.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        description: Date and movie identifiers to book.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequest"
+            example:
+              date: "20151201"
+              movies:
+                - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+      responses:
+        "200":
+          description: Booking added or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: booking added
+        "400":
+          description: Invalid request body or movie not scheduled for the date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                malformed:
+                  value:
+                    error: date and movies are required
+                movieNotScheduled:
+                  value:
+                    error: movie is not scheduled for this session
+        "404":
+          description: No schedule exists for the requested date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: session not found
+        "502":
+          description: Schedule service returned an unexpected response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Schedule service is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /bookings/read-all-bookings:
+    get:
+      tags: [bookings]
+      summary: Retrieve all bookings
+      responses:
+        "200":
+          description: List of user bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+              example:
+                - userid: chris_rivers
+                  dates:
+                    - date: "20151201"
+                      movies:
+                        - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+
+  /bookings/delete-booking/{booking_id}:
+    delete:
+      tags: [bookings]
+      summary: Delete a booking
+      description: Deletes a booking identified by the route parameter. The current database format stores userid and dates rather than a booking id.
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Booking deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: booking deleted
+        "500":
+          description: Booking ID not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /bookings/get-detailed-booking/{booking_id}:
+    get:
+      tags: [bookings]
+      summary: Retrieve a detailed booking
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "500":
+          description: Booking ID not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  parameters:
+    UserId:
+      name: userid
+      in: path
+      required: true
+      description: Identifier of the user making the booking.
+      schema:
+        type: string
+        example: chris_rivers
+    BookingId:
+      name: booking_id
+      in: path
+      required: true
+      description: Booking identifier expected by the current route.
+      schema:
+        type: string
+        example: booking-001
+
+  schemas:
+    BookingRequest:
+      type: object
+      required: [date, movies]
+      properties:
+        date:
+          type: string
+          pattern: "^[0-9]{8}$"
+          description: Session date in YYYYMMDD format.
+          example: "20151201"
+        movies:
+          type: array
+          minItems: 1
+          description: Movie identifiers scheduled on the requested date.
+          items:
+            type: string
+            format: uuid
+          example:
+            - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+    Booking:
+      type: object
+      required: [userid, dates]
+      properties:
+        userid:
+          type: string
+          example: chris_rivers
+        dates:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookedDate"
+    BookedDate:
+      type: object
+      required: [date, movies]
+      properties:
+        date:
+          type: string
+          pattern: "^[0-9]{8}$"
+          example: "20151201"
+        movies:
+          type: array
+          items:
+            type: string
+            format: uuid
+          example:
+            - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: booking added
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: session not found

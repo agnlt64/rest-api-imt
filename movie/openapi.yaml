@@ -1,29 +1,21 @@
 openapi: 3.0.3
 info:
   title: Movie Service API
-  description: API for browsing, adding, and rating movies.
+  description: API for listing, retrieving, creating, deleting, and rating movies.
   version: "1.0.0"
-  contact:
-    name: Helene Coullon
-    url: https://helene-coullon.fr/
-    email: helene.coullon@imt-atlantique.fr
 servers:
   - url: http://localhost:3200
     description: Local development server
 
 tags:
-- name: admin
-  description: Secured Admin-only calls
-- name: dev
-  description: Operations available to regular developers
+  - name: movies
+    description: Movie catalog operations
 
 paths:
   /:
     get:
-      tags:
-        - dev
+      tags: [movies]
       summary: Service home page
-      description: Returns an HTML welcome message.
       responses:
         "200":
           description: HTML welcome message
@@ -33,12 +25,10 @@ paths:
                 type: string
                 example: "<h1 style='color:blue'>Welcome to the Movie service!</h1>"
 
-  /json:
+  /movies/list/all:
     get:
-      tags:
-        - dev
-      summary: Retrieve the full list of movies
-      description: Returns the list of all available movies.
+      tags: [movies]
+      summary: Retrieve all movies
       responses:
         "200":
           description: List of movies
@@ -48,14 +38,18 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Movie"
+              example:
+                - title: The Good Dinosaur
+                  rating: 7.4
+                  director: Peter Sohn
+                  id: 720d006c-3a57-4b6a-b18f-9b713b073f3c
 
   /movies/{movieid}:
+    parameters:
+      - $ref: "#/components/parameters/MovieId"
     get:
-      tags:
-        - dev
-      summary: Retrieve a movie by its ID
-      parameters:
-        - $ref: "#/components/parameters/MovieId"
+      tags: [movies]
+      summary: Retrieve a movie by ID
       responses:
         "200":
           description: Movie found
@@ -63,18 +57,98 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Movie"
-        "500":
+        "404":
+          description: Movie ID not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: movie ID not found
+    post:
+      tags: [movies]
+      summary: Add a movie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Movie"
+            example:
+              title: The Good Dinosaur
+              rating: 7.4
+              director: Peter Sohn
+              id: 720d006c-3a57-4b6a-b18f-9b713b073f3c
+      responses:
+        "200":
+          description: Movie added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: movie added
+        "400":
+          description: Malformed movie body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Movie already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: movie already exists
+    delete:
+      tags: [movies]
+      summary: Delete a movie
+      responses:
+        "200":
+          description: Deleted movie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movie"
+        "404":
           description: Movie ID not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
 
-    post:
-      tags:
-        - admin
-      summary: Add a new movie
-      description: Adds a movie with the given ID, if it doesn't already exist.
+  /movies/info:
+    get:
+      tags: [movies]
+      summary: Retrieve a movie by exact title
+      parameters:
+        - name: title
+          in: query
+          required: true
+          description: Exact movie title.
+          schema:
+            type: string
+            example: The Martian
+      responses:
+        "200":
+          description: Movie found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movie"
+        "404":
+          description: Movie title not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /movies/rating/{movieid}:
+    put:
+      tags: [movies]
+      summary: Update a movie rating
       parameters:
         - $ref: "#/components/parameters/MovieId"
       requestBody:
@@ -82,72 +156,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Movie"
+              type: object
+              required: [rating]
+              properties:
+                rating:
+                  type: number
+                  format: float
+                  example: 8.5
       responses:
         "200":
-          description: Movie added successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: movie added
-        "500":
-          description: Movie ID already exists
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /moviesbytitle:
-    get:
-      tags:
-        - dev
-      summary: Retrieve a movie by its title
-      parameters:
-        - name: title
-          in: query
-          required: true
-          description: Exact title of the movie to search for
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Movie found
+          description: Updated movie
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Movie"
-        "500":
-          description: Movie title not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /movies/{movieid}/{rate}:
-    put:
-      tags:
-        - admin
-      summary: Update a movie's rating
-      parameters:
-        - $ref: "#/components/parameters/MovieId"
-        - name: rate
-          in: path
-          required: true
-          description: New rating to assign to the movie
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Movie updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Movie"
-        "500":
+        "404":
           description: Movie ID not found
           content:
             application/json:
@@ -160,40 +183,40 @@ components:
       name: movieid
       in: path
       required: true
-      description: Unique identifier of the movie
+      description: Unique movie identifier.
       schema:
         type: string
-
+        format: uuid
+        example: 720d006c-3a57-4b6a-b18f-9b713b073f3c
   schemas:
     Movie:
       type: object
-      description: Representation of a movie.
+      required: [id, title, rating, director]
       properties:
         id:
           type: string
           format: uuid
-          description: Unique identifier of the movie
-          example: "720d006c-3a57-4b6a-b18f-9b713b073f3c"
+          example: 720d006c-3a57-4b6a-b18f-9b713b073f3c
         title:
           type: string
-          description: Movie title
-          example: "The Good Dinosaur"
+          example: The Good Dinosaur
         rating:
           type: number
           format: float
-          description: Rating assigned to the movie
           example: 7.4
         director:
           type: string
-          description: Movie director
-          example: "Peter Sohn"
-      required:
-        - id
-        - title
-
+          example: Peter Sohn
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: movie added
     Error:
       type: object
+      required: [error]
       properties:
         error:
           type: string
-          example: "Movie ID not found"
+          example: movie ID not found

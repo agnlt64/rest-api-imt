@@ -1,0 +1,225 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: API for creating, reading, verifying, and deleting users.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3203
+    description: Local development server
+
+tags:
+  - name: users
+    description: User management operations
+
+paths:
+  /:
+    get:
+      tags: [users]
+      summary: Service home page
+      responses:
+        "200":
+          description: HTML welcome message
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<h1 style='color:blue'>Welcome to the User service!</h1>"
+
+  /users/create-user/{user_id}:
+    post:
+      tags: [users]
+      summary: Create a user
+      description: Adds a user to the user database when the path identifier is not already used.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        description: User data to save. The id should match the path parameter.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+            example:
+              id: michael_jordan
+              name: Michael Jordan
+              role: user
+              last_active: 1360032000
+      responses:
+        "200":
+          description: User added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: user added
+        "400":
+          description: User ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: user ID already exists
+
+  /users/read-all-users:
+    get:
+      tags: [users]
+      summary: Retrieve all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+              example:
+                - id: chris_rivers
+                  name: Chris Rivers
+                  role: admin
+                  last_active: 1360031010
+
+  /users/update-user/{user_id}:
+    put:
+      tags: [users]
+      summary: Update a user's name
+      description: The current Flask implementation declares an additional Python argument not provided by the route, so this endpoint currently requires a code fix before it can be called successfully.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: Michael Scott
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "500":
+          description: User ID not found or route execution error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/delete-user/{user_id}:
+    delete:
+      tags: [users]
+      summary: Delete a regular user
+      description: Only users whose role is user can be deleted by the current implementation.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: user deleted
+        "500":
+          description: User not found or user is an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/verify-user/{user_id}:
+    get:
+      tags: [users]
+      summary: Retrieve a user by ID
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "500":
+          description: User ID not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/is-admin/{user_id}:
+    get:
+      tags: [users]
+      summary: Check whether a user is an administrator
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User is an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: user is admin
+        "500":
+          description: User is not an administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: user is not admin
+
+components:
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      description: Unique user identifier.
+      schema:
+        type: string
+        example: chris_rivers
+  schemas:
+    User:
+      type: object
+      required: [id, name, role, last_active]
+      properties:
+        id:
+          type: string
+          example: chris_rivers
+        name:
+          type: string
+          example: Chris Rivers
+        role:
+          type: string
+          enum: [admin, user]
+          example: user
+        last_active:
+          type: integer
+          format: int64
+          description: Unix timestamp of the user's last activity.
+          example: 1360031010
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: user added
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: user ID not found

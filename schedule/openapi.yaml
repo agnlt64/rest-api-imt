@@ -1,0 +1,173 @@
+openapi: 3.0.3
+info:
+  title: Schedule Service API
+  description: API for managing movie sessions and their scheduled movies.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3202
+    description: Local development server
+
+tags:
+  - name: schedule
+    description: Movie schedule operations
+
+paths:
+  /schedule/list/all:
+    get:
+      tags: [schedule]
+      summary: Retrieve all schedules
+      responses:
+        "200":
+          description: All scheduled sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleEntry"
+              example:
+                - date: "20151201"
+                  movies:
+                    - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+                    - "7daf7208-be4d-4944-a3ae-c1c2f516f3e6"
+
+  /schedule/{date}:
+    get:
+      tags: [schedule]
+      summary: Retrieve a schedule by date
+      parameters:
+        - $ref: "#/components/parameters/Date"
+      responses:
+        "200":
+          description: Schedule found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleEntry"
+              example:
+                date: "20151201"
+                movies:
+                  - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+        "404":
+          description: No movies scheduled for the date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: no movies for the given date
+
+    post:
+      tags: [schedule]
+      summary: Add movies to a schedule
+      parameters:
+        - $ref: "#/components/parameters/Date"
+      requestBody:
+        required: true
+        description: Movie identifiers to add to the date. Each movie is checked by the Movie service.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleRequest"
+            example:
+              date: "20151206"
+              movies:
+                - "39ab85e5-5e8e-4dc5-afea-65dc368bd7ab"
+      responses:
+        "200":
+          description: Schedule created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleEntry"
+        "400":
+          description: Malformed request or no movies specified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [schedule]
+      summary: Remove movies from a date
+      parameters:
+        - $ref: "#/components/parameters/Date"
+      requestBody:
+        required: true
+        description: Date and movie identifiers to remove.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleRequest"
+            example:
+              date: "20151201"
+              movies:
+                - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+      responses:
+        "200":
+          description: Updated schedule entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleEntry"
+        "400":
+          description: Malformed request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Date not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  parameters:
+    Date:
+      name: date
+      in: path
+      required: true
+      description: Session date in YYYYMMDD format.
+      schema:
+        type: string
+        pattern: "^[0-9]{8}$"
+        example: "20151201"
+  schemas:
+    ScheduleEntry:
+      type: object
+      required: [date, movies]
+      properties:
+        date:
+          type: string
+          pattern: "^[0-9]{8}$"
+          example: "20151201"
+        movies:
+          type: array
+          items:
+            type: string
+            format: uuid
+          example:
+            - "267eedb8-0f5d-42d5-8f43-72426b9fb3e6"
+    ScheduleRequest:
+      type: object
+      required: [date, movies]
+      properties:
+        date:
+          type: string
+          pattern: "^[0-9]{8}$"
+          example: "20151201"
+        movies:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: date not found
