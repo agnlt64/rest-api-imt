@@ -34,7 +34,7 @@ def home():
 	return "<h1 style='color:blue'>Welcome to the User service!</h1>"
 
 
-@app.route("/users/create-user/<user_id>", methods=['POST'])
+@app.route("/users/<user_id>", methods=['POST'])
 def create_user(user_id):
 	req = request.get_json()
 
@@ -50,14 +50,14 @@ def create_user(user_id):
 	return res
 
 
-@app.route("/users/read-all-users", methods=['GET'])
+@app.route("/users", methods=['GET'])
 def read_all_users():
 	users = read()
 	res = make_response(jsonify(users),200)
 	return res
 
 
-@app.route("/users/update-user/<user_id>", methods=['PUT'])
+@app.route("/users/<user_id>", methods=['PUT'])
 def update_user(user_id, name):
 	for user in users:
 		if str(user["id"]) == str(user_id):
@@ -70,7 +70,7 @@ def update_user(user_id, name):
 	return res
 
 
-@app.route("/users/delete-user/<user_id>", methods=['DELETE'])
+@app.route("/users/<user_id>", methods=['DELETE'])
 def delete_user(user_id):
 	for user in users:
 		if str(user["id"]) == str(user_id) and str(user["role"]) == "user":
@@ -82,7 +82,7 @@ def delete_user(user_id):
 	res = make_response(jsonify({"error":"user ID not found"}),500)
 	return res
 
-@app.route("/users/verify-user/<user_id>", methods=['GET'])
+@app.route("/users/<user_id>", methods=['GET'])
 def verify_user(user_id):
 	for user in users:
 		if str(user["id"]) == str(user_id):
