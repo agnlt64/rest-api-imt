@@ -65,7 +65,7 @@ def save_booking(userid, date, movies):
 
 	write_bookings_to_file()
 
-@app.route("/bookings/create-booking/<userid>", methods=['POST'])
+@app.route("/bookings/<userid>", methods=['POST'])
 def create_booking(userid):
 	booking_data, error = get_booking_data()
 	if error is not None:
@@ -79,12 +79,12 @@ def create_booking(userid):
 	save_booking(userid, date, movies)
 	return make_response(jsonify({"message": "booking added"}), 200)
 
-@app.route("/bookings/read-all-bookings", methods=['GET'])
+@app.route("/bookings", methods=['GET'])
 def read_all_bookings():
    res = make_response(jsonify(bookings),200)
    return res
 
-@app.route("/bookings/delete-booking/<booking_id>", methods=['DELETE'])
+@app.route("/bookings/<booking_id>", methods=['DELETE'])
 def delete_booking(booking_id):
 	for booking in bookings:
 		if str(booking["id"]) == str(booking_id):
@@ -96,7 +96,7 @@ def delete_booking(booking_id):
 	res = make_response(jsonify({"error":"booking ID not found"}),500)
 	return res
 
-@app.route("/bookings/get-detailed-booking/<booking_id>", methods=['GET'])
+@app.route("/bookings/<booking_id>", methods=['GET'])
 def get_detailed_booking(booking_id):
 	for booking in bookings:
 		if str(booking["id"]) == str(booking_id):
